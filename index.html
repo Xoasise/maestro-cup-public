@@ -19,8 +19,15 @@
       <span class="brand-sub">FC26 — Le tournoi ultime des meilleurs clubs</span>
     </div>
   </div>
-  <div id="connection-dot" class="connection-dot" title="Connexion en direct"></div>
 </header>
+
+<section id="inactive-screen" class="inactive-screen" style="display:none">
+  <span class="inactive-crown">♛</span>
+  <h2>Le tournoi n'a pas encore commencé</h2>
+  <p>Reviens un peu plus tard — cette page se met à jour automatiquement dès que la compétition démarre.</p>
+</section>
+
+<div id="live-wrapper">
 
 <div id="ticker" class="ticker">
   <div class="ticker-inner" id="ticker-inner">
@@ -58,8 +65,10 @@
 </main>
 
 <footer class="site-footer">
-  <span>Maestro Cup FC26 — mis à jour en direct</span>
+  <span id="last-sync">Maestro Cup FC26</span>
 </footer>
+
+</div>
 
 <script type="module" src="app.js"></script>
 </body>

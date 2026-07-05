@@ -3,11 +3,14 @@ import { computeStandings, buildBracketView, poulesTerminees } from "./logic.js"
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, collection, onSnapshot,
+  getFirestore, collection, getDocs, getDoc, doc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const POLL_INTERVAL_MS = 60_000;
+const POLL_INTERVAL_INACTIVE_MS = 60_000; // même fréquence, mais ne lit qu'1 document tant que le tournoi est inactif
 
 const POULE_COLOR = { A: "#e8b84b", B: "#4caf7d", C: "#e15554", D: "#4a90d9" };
 
@@ -16,28 +19,56 @@ let MATCHES = [];       // matchs de poule
 let BRACKET = {};        // { qf1: {...}, qf2:...} scores/status
 let currentJournee = "j1";
 
-/* ---------------- Firestore listeners ---------------- */
-onSnapshot(collection(db, "teams"), (snap) => {
-  TEAMS = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  markOnline();
-  renderAll();
-}, () => markOffline());
+/* ---------------- Boucle de synchronisation ----------------
+   Pas de temps réel ici : on interroge Firestore toutes les 60 secondes.
+   Tant que le tournoi est marqué "inactif" par l'organisateur (panel admin),
+   on ne lit qu'un seul petit document (meta/state) au lieu des 3 collections
+   complètes — ça évite de consommer des lectures Firestore pour rien avant
+   le début de la compétition. */
+checkAndLoad();
+setInterval(checkAndLoad, POLL_INTERVAL_MS);
 
-onSnapshot(collection(db, "matches"), (snap) => {
-  MATCHES = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  markOnline();
-  renderAll();
-}, () => markOffline());
+async function checkAndLoad() {
+  try {
+    const metaSnap = await getDoc(doc(db, "meta", "state"));
+    const active = metaSnap.exists() && !!metaSnap.data().tournamentActive;
 
-onSnapshot(collection(db, "bracket"), (snap) => {
-  BRACKET = {};
-  snap.docs.forEach((d) => { BRACKET[d.id] = d.data(); });
-  markOnline();
-  renderAll();
-}, () => markOffline());
+    if (!active) {
+      showInactive();
+      return;
+    }
+    showActive();
 
-function markOnline() { document.getElementById("connection-dot").classList.add("online"); }
-function markOffline() { document.getElementById("connection-dot").classList.remove("online"); }
+    const [teamsSnap, matchesSnap, bracketSnap] = await Promise.all([
+      getDocs(collection(db, "teams")),
+      getDocs(collection(db, "matches")),
+      getDocs(collection(db, "bracket")),
+    ]);
+    TEAMS = teamsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    MATCHES = matchesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    BRACKET = {};
+    bracketSnap.docs.forEach((d) => { BRACKET[d.id] = d.data(); });
+
+    renderAll();
+    setLastSync();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function showInactive() {
+  document.getElementById("inactive-screen").style.display = "block";
+  document.getElementById("live-wrapper").style.display = "none";
+}
+function showActive() {
+  document.getElementById("inactive-screen").style.display = "none";
+  document.getElementById("live-wrapper").style.display = "block";
+}
+function setLastSync() {
+  const el = document.getElementById("last-sync");
+  const now = new Date();
+  el.textContent = `Dernière mise à jour : ${now.toLocaleTimeString("fr-FR")}`;
+}
 
 /* ---------------- Tabs ---------------- */
 document.querySelectorAll(".tab-btn").forEach((btn) => {
