@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { computeStandings, buildBracketView, poulesTerminees } from "./logic.js";
+import { computeStandings, buildBracketView, poulesTerminees, POULES } from "./logic.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -12,11 +12,15 @@ const db = getFirestore(app);
 const POLL_INTERVAL_MS = 60_000;
 const POLL_INTERVAL_INACTIVE_MS = 60_000; // même fréquence, mais ne lit qu'1 document tant que le tournoi est inactif
 
-const POULE_COLOR = { A: "#e8b84b", B: "#4caf7d", C: "#e15554", D: "#4a90d9" };
+// 32 équipes -> 8 poules (A à H). Couleurs ajoutées pour E, F, G, H.
+const POULE_COLOR = {
+  A: "#e8b84b", B: "#4caf7d", C: "#e15554", D: "#4a90d9",
+  E: "#9c6ade", F: "#e07b39", G: "#39a7e0", H: "#c9e034",
+};
 
 let TEAMS = [];
 let MATCHES = [];       // matchs de poule
-let BRACKET = {};        // { qf1: {...}, qf2:...} scores/status
+let BRACKET = {};        // { hf1: {...}, qf1: {...}, ...} scores/status
 let currentJournee = "j1";
 
 /* ---------------- Boucle de synchronisation ----------------
@@ -160,7 +164,7 @@ function renderCalendrier() {
 /* ---------------- Poules ---------------- */
 function renderPoules() {
   const el = document.getElementById("poules-grid");
-  const poules = ["A", "B", "C", "D"];
+  const poules = POULES; // ["A","B","C","D","E","F","G","H"]
   el.innerHTML = poules.map((p) => {
     const teams = TEAMS.filter((t) => t.poule === p);
     const standings = computeStandings(teams, MATCHES);
@@ -196,7 +200,9 @@ function renderBracket() {
     ? "Phase de poules terminée — l'arbre est calculé automatiquement à partir des classements."
     : "L'arbre se remplira automatiquement au fur et à mesure que les matchs de poule se terminent.";
 
+  // 32 équipes -> 16 qualifiés -> un tour de huitièmes de finale a été ajouté avant les quarts.
   const rounds = [
+    { title: "Huitièmes de finale", keys: ["hf1", "hf2", "hf3", "hf4", "hf5", "hf6", "hf7", "hf8"] },
     { title: "Quarts de finale", keys: ["qf1", "qf2", "qf3", "qf4"] },
     { title: "Demi-finales", keys: ["sf1", "sf2"] },
     { title: "Finale", keys: ["final"] },
@@ -230,17 +236,25 @@ function renderBracketMatch(m) {
 document.getElementById("reglement-content").innerHTML = `
   <h2>Phase de poules</h2>
   <ul>
-    <li><strong>Structure :</strong> le tournoi commence par une phase de groupes composée de 4 poules de 4 équipes.</li>
-    <li><strong>Qualification :</strong> les 2 premières équipes de chaque poule sont qualifiées pour la phase finale.</li>
+    <li><strong>Structure :</strong> le tournoi commence par une phase de groupes composée de 8 poules de 4 équipes (32 équipes au total).</li>
+    <li><strong>Qualification :</strong> les 2 premières équipes de chaque poule sont qualifiées pour la phase finale (16 équipes qualifiées).</li>
     <li><strong>Abandon :</strong> tout abandon volontaire entraîne une pénalité de −1 point au classement de la poule.</li>
   </ul>
 
-  <h2>Phase finale (arbre en quarts de finale)</h2>
+  <h2>Phase finale (arbre en huitièmes de finale)</h2>
   <ul>
-    <li>Quart de finale 1 : 1er Poule A vs 2e Poule B</li>
-    <li>Quart de finale 2 : 1er Poule C vs 2e Poule D</li>
-    <li>Quart de finale 3 : 1er Poule B vs 2e Poule A</li>
-    <li>Quart de finale 4 : 1er Poule D vs 2e Poule C</li>
+    <li>Huitième de finale 1 : 1er Poule A vs 2e Poule B</li>
+    <li>Huitième de finale 2 : 1er Poule C vs 2e Poule D</li>
+    <li>Huitième de finale 3 : 1er Poule E vs 2e Poule F</li>
+    <li>Huitième de finale 4 : 1er Poule G vs 2e Poule H</li>
+    <li>Huitième de finale 5 : 1er Poule B vs 2e Poule A</li>
+    <li>Huitième de finale 6 : 1er Poule D vs 2e Poule C</li>
+    <li>Huitième de finale 7 : 1er Poule F vs 2e Poule E</li>
+    <li>Huitième de finale 8 : 1er Poule H vs 2e Poule G</li>
+    <li>Quart de finale 1 : vainqueur HF1 vs vainqueur HF2</li>
+    <li>Quart de finale 2 : vainqueur HF3 vs vainqueur HF4</li>
+    <li>Quart de finale 3 : vainqueur HF5 vs vainqueur HF6</li>
+    <li>Quart de finale 4 : vainqueur HF7 vs vainqueur HF8</li>
     <li>Demi-finale 1 : vainqueur QF1 vs vainqueur QF2</li>
     <li>Demi-finale 2 : vainqueur QF3 vs vainqueur QF4</li>
     <li>Finale : vainqueur demi-finale 1 vs vainqueur demi-finale 2</li>
@@ -251,7 +265,7 @@ document.getElementById("reglement-content").innerHTML = `
     <li><strong>Fair-play &amp; respect :</strong> tout comportement toxique ou manque de respect entraîne l'exclusion immédiate de l'ensemble de l'équipe.</li>
     <li><strong>Ponctualité :</strong> les matchs doivent débuter dans les 5 minutes suivant l'heure prévue. En cas de retard, l'équipe adverse l'emporte par forfait (victoire sur tapis vert 3-0).</li>
     <li><strong>Bugs / déconnexions :</strong> en cas de problème technique, le match est relancé en conservant le score exact au moment du bug, et se joue jusqu'à la 25e minute (matchs de xxh00) ou la 55e minute (matchs de xxh30).</li>
-    <li><strong>Streaming :</strong> pour les demi-finales et la finale, au moins un joueur par équipe doit diffuser sa partie (Discord par exemple).</li>
+    <li><strong>Streaming :</strong> pour les huitièmes, quarts, demi-finales et la finale, au moins un joueur par équipe doit diffuser sa partie (Discord par exemple).</li>
     <li><strong>Connexion :</strong> merci de vous assurer d'avoir une connexion stable.</li>
     <li><strong>Points :</strong> victoire = 3 pts · match nul = 1 pt · défaite = 0 pt.</li>
   </ul>

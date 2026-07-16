@@ -1,15 +1,34 @@
 // Logique de classement et de phase finale — partagée par le site public et le panel admin.
 // (Ce fichier est volontairement dupliqué dans les deux dépôts pour rester deux sites indépendants.)
 
+// 32 équipes réparties en 8 poules de 4 (A à H).
+// Les 2 premiers de chaque poule (16 équipes) sont qualifiés pour la phase finale.
+// Un tour de huitièmes de finale a été ajouté avant les quarts pour absorber ces 16 qualifiés.
 export const BRACKET_DEF = {
-  qf1: { label: "Quart de finale 1", from: [["A", 1], ["B", 2]] },
-  qf2: { label: "Quart de finale 2", from: [["C", 1], ["D", 2]] },
-  qf3: { label: "Quart de finale 3", from: [["B", 1], ["A", 2]] },
-  qf4: { label: "Quart de finale 4", from: [["D", 1], ["C", 2]] },
+  // ---- Huitièmes de finale (8 matchs, 16 équipes) ----
+  hf1: { label: "Huitième de finale 1", from: [["A", 1], ["B", 2]] },
+  hf2: { label: "Huitième de finale 2", from: [["C", 1], ["D", 2]] },
+  hf3: { label: "Huitième de finale 3", from: [["E", 1], ["F", 2]] },
+  hf4: { label: "Huitième de finale 4", from: [["G", 1], ["H", 2]] },
+  hf5: { label: "Huitième de finale 5", from: [["B", 1], ["A", 2]] },
+  hf6: { label: "Huitième de finale 6", from: [["D", 1], ["C", 2]] },
+  hf7: { label: "Huitième de finale 7", from: [["F", 1], ["E", 2]] },
+  hf8: { label: "Huitième de finale 8", from: [["H", 1], ["G", 2]] },
+
+  // ---- Quarts de finale (alimentés par les vainqueurs des huitièmes) ----
+  qf1: { label: "Quart de finale 1", from: [["hf1"], ["hf2"]] },
+  qf2: { label: "Quart de finale 2", from: [["hf3"], ["hf4"]] },
+  qf3: { label: "Quart de finale 3", from: [["hf5"], ["hf6"]] },
+  qf4: { label: "Quart de finale 4", from: [["hf7"], ["hf8"]] },
+
+  // ---- Demi-finales & finale (inchangées dans leur logique) ----
   sf1: { label: "Demi-finale 1", from: [["qf1"], ["qf2"]] },
   sf2: { label: "Demi-finale 2", from: [["qf3"], ["qf4"]] },
   final: { label: "Finale", from: [["sf1"], ["sf2"]] },
 };
+
+// Liste des poules — modifiée pour passer de 4 à 8 poules.
+export const POULES = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 /**
  * Calcule le classement d'une poule à partir des matchs terminés.
@@ -73,8 +92,8 @@ function headToHead(x, y, matches) {
 
 /**
  * Calcule le nom d'affichage + id d'équipe pour une place dans l'arbre (bracket).
- * standingsByPoule: { A: [...], B: [...], C: [...], D: [...] }
- * bracketMatches: { qf1: {...}, qf2: {...}, ... } (scores + status)
+ * standingsByPoule: { A: [...], B: [...], ..., H: [...] }
+ * bracketMatches: { hf1: {...}, qf1: {...}, ... } (scores + status)
  */
 export function resolveSlot(slotDef, standingsByPoule, bracketMatches, teamsById) {
   if (slotDef.length === 2) {
@@ -84,7 +103,7 @@ export function resolveSlot(slotDef, standingsByPoule, bracketMatches, teamsById
     const team = arr[rank - 1];
     return team ? { id: team.id, name: team.name, flag: team.flag, resolved: true } : { name: `${rank === 1 ? "1er" : "2e"} Poule ${poule}`, resolved: false };
   }
-  // ["qf1"] -> vainqueur du match qf1
+  // ["hf1"] / ["qf1"] -> vainqueur du match référencé
   const key = slotDef[0];
   const m = bracketMatches[key];
   const label = BRACKET_DEF[key]?.label || key;
@@ -100,8 +119,8 @@ export function buildBracketView(teams, poulesMatches, bracketMatches) {
   const teamsById = {};
   teams.forEach((t) => { teamsById[t.id] = t; });
 
-  const standingsByPoule = { A: [], B: [], C: [], D: [] };
-  ["A", "B", "C", "D"].forEach((p) => {
+  const standingsByPoule = {};
+  POULES.forEach((p) => {
     standingsByPoule[p] = computeStandings(teams.filter((t) => t.poule === p), poulesMatches);
   });
 
