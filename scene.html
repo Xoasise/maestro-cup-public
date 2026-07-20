@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Maestro Cup FC26 — Scène stream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="scene.css" />
+</head>
+<body>
+
+<div id="scene-canvas" class="scene-canvas">
+
+  <!-- Bandeau du haut : ticker des matchs -->
+  <div class="scene-area scene-top">
+    <div id="ticker" class="ticker scene-ticker">
+      <div class="ticker-inner" id="ticker-inner">
+        <span class="ticker-empty">Chargement du direct…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zone caméra : reste TRANSPARENTE, place ta source webcam ici dans OBS -->
+  <div class="scene-area scene-cam">
+    <div class="cam-placeholder">
+      <span>📷 Emplacement caméra</span>
+      <small>Place ta source vidéo derrière ce calque dans OBS</small>
+    </div>
+  </div>
+
+  <!-- Panneau gauche : classement d'une poule (défile automatiquement) -->
+  <div class="scene-area scene-left">
+    <div class="scene-panel" id="poule-panel">
+      <div class="scene-panel-head">
+        <span class="badge" id="poule-badge">A</span>
+        <h3 id="poule-title">Poule A</h3>
+      </div>
+      <table class="standings scene-standings">
+        <thead><tr><th>#</th><th style="text-align:left">Équipe</th><th>Pts</th><th>Diff</th></tr></thead>
+        <tbody id="poule-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Panneau droit : prochains matchs ou phase finale -->
+  <div class="scene-area scene-right">
+    <div class="scene-panel">
+      <div class="scene-panel-head">
+        <h3 id="right-panel-title">Prochains matchs</h3>
+      </div>
+      <div id="right-panel-content"></div>
+    </div>
+  </div>
+
+  <!-- Bandeau du bas : branding -->
+  <div class="scene-area scene-bottom">
+    <span class="brand-crown-small">♛</span>
+    <span class="scene-brand-text">Maestro Cup FC26</span>
+    <span class="scene-sync" id="scene-sync"></span>
+  </div>
+
+</div>
+
+<script type="module" src="scene-app.js"></script>
+</body>
+</html>

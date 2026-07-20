@@ -1,0 +1,155 @@
+/* ============================================================
+   Scène OBS — Maestro Cup FC26
+   Le fond reste TRANSPARENT (aucune couleur définie sur html/body)
+   pour que OBS puisse composer cette page par-dessus le jeu / la
+   webcam en Browser Source avec alpha.
+   Résolution de référence : 1920x1080. Règle ta Browser Source
+   sur cette taille dans OBS pour un alignement parfait.
+   ============================================================ */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  background-image: none !important;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+
+.scene-canvas {
+  width: 1920px;
+  height: 1080px;
+  display: grid;
+  grid-template-columns: 460px 1fr 460px;
+  grid-template-rows: 90px 1fr 64px;
+  grid-template-areas:
+    "top   top   top"
+    "left  cam   right"
+    "bottom bottom bottom";
+  gap: 18px;
+  padding: 18px;
+  font-family: var(--font-body);
+  color: var(--text);
+}
+
+.scene-area { min-width: 0; min-height: 0; }
+
+/* ---------- Bandeau du haut : ticker ---------- */
+.scene-top { grid-area: top; }
+.scene-ticker {
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(13,20,38,0.92), rgba(19,28,51,0.92) 50%, rgba(13,20,38,0.92));
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+}
+
+/* ---------- Zone caméra : transparente, juste un repère visuel ---------- */
+.scene-cam {
+  grid-area: cam;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cam-placeholder {
+  width: 100%;
+  height: 100%;
+  border: 2px dashed rgba(232,184,75,0.35);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(232,184,75,0.5);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.cam-placeholder small {
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  color: rgba(141,151,173,0.6);
+}
+/* Une fois calé dans OBS, masque le repère en ajoutant ?clean=1 à l'URL de la source */
+body.clean .cam-placeholder { display: none; }
+
+/* ---------- Panneaux gauche / droite ---------- */
+.scene-left { grid-area: left; }
+.scene-right { grid-area: right; }
+
+.scene-panel {
+  height: 100%;
+  background: rgba(17,26,46,0.92);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.scene-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: rgba(22,33,58,0.92);
+  border-bottom: 2px solid var(--poule-color, var(--gold));
+}
+.scene-panel-head .badge {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--poule-color, var(--gold));
+  color: #131a2b; font-family: var(--font-display); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  transition: background 0.4s ease;
+}
+.scene-panel-head h3 {
+  margin: 0; font-family: var(--font-display); font-size: 18px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.scene-standings { font-size: 15px; }
+.scene-standings th, .scene-standings td { padding: 10px 10px; }
+
+/* ---------- Liste des prochains matchs ---------- */
+.scene-match-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+}
+.scene-match-row:last-child { border-bottom: none; }
+.scene-match-teams { display: flex; align-items: center; gap: 8px; flex: 1; }
+.scene-match-teams .vs { color: var(--text-muted); font-size: 12px; }
+.scene-match-meta { color: var(--text-muted); font-size: 12px; font-family: var(--font-mono); text-align: right; }
+.scene-match-row.is-live .scene-match-meta { color: var(--live-red); font-weight: 700; }
+
+/* ---------- Bracket compact (phase finale) ---------- */
+.scene-bracket-row {
+  padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.scene-bracket-row:last-child { border-bottom: none; }
+.scene-bracket-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.scene-bracket-teams { display: flex; justify-content: space-between; }
+.scene-bracket-teams .winner { color: var(--gold); font-weight: 700; }
+
+.scene-empty { padding: 18px; color: var(--text-muted); font-size: 13.5px; }
+
+/* ---------- Bandeau du bas ---------- */
+.scene-bottom {
+  grid-area: bottom;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  background: rgba(13,20,38,0.85);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.brand-crown-small { color: var(--gold); font-size: 18px; }
+.scene-brand-text { font-family: var(--font-display); letter-spacing: 0.5px; color: var(--text); font-weight: 600; }
+.scene-sync { margin-left: auto; font-family: var(--font-mono); font-size: 11.5px; }
