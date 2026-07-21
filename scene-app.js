@@ -109,6 +109,27 @@ function playRotateAnim(el) {
   el.classList.add("panel-rotate-anim");
 }
 
+/* ---------------- Helper : ligne "équipe — score — équipe" du bracket ----------------
+   Utilisé à la fois pour les matchs en cours/à venir (renderRightPanel) et
+   pour les résultats (renderBracketResults), pour garantir la même mise en
+   page partout : le nom de chaque équipe reste collé à son bord, et le
+   score (ou "vs" si le match n'a pas encore de score) reste centré entre
+   les deux — au lieu d'être accolé au nom, ce qui écartait tout vers les
+   bords et laissait un grand vide au milieu. */
+function bracketTeamsHtml(m) {
+  const winnerId = (m.status === "finished" && m.scoreA !== null && m.scoreA !== m.scoreB)
+    ? (m.scoreA > m.scoreB ? m.teamA.id : m.teamB.id) : null;
+  const winCls = (t) => (winnerId && t.id === winnerId ? "winner" : "");
+  const hasScore = m.scoreA !== null && m.scoreA !== undefined && m.scoreB !== null && m.scoreB !== undefined;
+  const center = hasScore
+    ? `<span class="scene-bracket-score-center">${m.scoreA}<span class="scene-bracket-dash">-</span>${m.scoreB}</span>`
+    : `<span class="scene-bracket-vs">vs</span>`;
+  return `
+    <span class="scene-bracket-name ${winCls(m.teamA)}">${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name}</span>
+    ${center}
+    <span class="scene-bracket-name right ${winCls(m.teamB)}">${m.teamB.name}${m.teamB.flag ? " " + m.teamB.flag : ""}</span>`;
+}
+
 function renderAll() {
   if (!TEAMS.length) return;
   renderTicker();
@@ -229,21 +250,14 @@ function renderRightPanel() {
 
   content.innerHTML = relevant.length
     ? relevant.map((m) => {
-        const winnerId = (m.status === "finished" && m.scoreA !== null && m.scoreA !== m.scoreB)
-          ? (m.scoreA > m.scoreB ? m.teamA.id : m.teamB.id) : null;
-        const cls = (t) => (winnerId && t.id === winnerId ? "winner" : "");
         const isLive = m.status === "live";
-        const scoreTxt = (val) => (val === null || val === undefined) ? "" : `<span class="scene-bracket-score">${val}</span>`;
         return `
           <div class="scene-bracket-row ${isLive ? "is-live" : ""}">
             <div class="scene-bracket-label">
               ${m.label}
               ${isLive ? `<span class="scene-live-pill">LIVE</span>` : ""}
             </div>
-            <div class="scene-bracket-teams">
-              <span class="${cls(m.teamA)}">${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name} ${scoreTxt(m.scoreA)}</span>
-              <span class="${cls(m.teamB)}">${scoreTxt(m.scoreB)} ${m.teamB.flag ? m.teamB.flag + " " : ""}${m.teamB.name}</span>
-            </div>
+            <div class="scene-bracket-teams">${bracketTeamsHtml(m)}</div>
           </div>`;
       }).join("")
     : `<div class="scene-empty">Tournoi terminé 🏆</div>`;
@@ -294,18 +308,11 @@ function renderBracketResults(el, bracket, order) {
   const finished = paginate(finishedAll);
 
   el.innerHTML = finished.length
-    ? finished.map((m) => {
-        const aWins = m.scoreA !== null && m.scoreA > m.scoreB;
-        const bWins = m.scoreA !== null && m.scoreB > m.scoreA;
-        return `
+    ? finished.map((m) => `
           <div class="scene-bracket-row">
             <div class="scene-bracket-label">${m.label}</div>
-            <div class="scene-bracket-teams">
-              <span class="${aWins ? "winner" : ""}">${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name} <span class="scene-bracket-score">${m.scoreA}</span></span>
-              <span class="${bWins ? "winner" : ""}"><span class="scene-bracket-score">${m.scoreB}</span> ${m.teamB.flag ? m.teamB.flag + " " : ""}${m.teamB.name}</span>
-            </div>
-          </div>`;
-      }).join("")
+            <div class="scene-bracket-teams">${bracketTeamsHtml(m)}</div>
+          </div>`).join("")
     : `<div class="scene-empty">Aucun résultat pour le moment.</div>`;
   playRotateAnim(el);
 }

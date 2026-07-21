@@ -159,7 +159,12 @@ body.clean .cam-placeholder { display: none; }
   color: var(--poule-b); padding: 0 4px;
 }
 
-/* ---------- Bracket compact (phase finale) ---------- */
+/* ---------- Bracket compact (phase finale) ----------
+   3 colonnes : nom d'équipe (gauche) — score centré — nom d'équipe (droite).
+   Avant ce correctif, chaque span contenait "nom + score" et le
+   `justify-content: space-between` du conteneur poussait ces deux blocs
+   vers les bords, ce qui collait les scores aux noms au lieu de les
+   centrer — d'où le grand espace vide au milieu de la ligne. */
 .scene-bracket-row {
   padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: 14px;
 }
@@ -169,14 +174,31 @@ body.clean .cam-placeholder { display: none; }
   letter-spacing: 0.4px; margin-bottom: 4px;
   display: flex; align-items: center; gap: 8px;
 }
-.scene-bracket-teams { display: flex; justify-content: space-between; }
-.scene-bracket-teams .winner { color: var(--gold); font-weight: 700; }
-/* Score en direct dans le bracket : avant ce correctif, rien ne s'affichait
-   ici même quand le score était bien reçu depuis Firestore. */
-.scene-bracket-score {
+.scene-bracket-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.scene-bracket-name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scene-bracket-name.right { text-align: right; }
+.scene-bracket-name.winner { color: var(--gold); font-weight: 700; }
+/* Score centré entre les deux noms, qu'il soit en direct ou terminé */
+.scene-bracket-score-center {
+  flex: 0 0 auto;
+  white-space: nowrap;
   font-family: var(--font-mono); font-weight: 700; font-size: 14px;
   color: var(--gold);
+  padding: 0 8px;
 }
+.scene-bracket-dash { color: var(--text-muted); font-weight: 500; margin: 0 3px; }
+.scene-bracket-vs { flex: 0 0 auto; color: var(--text-muted); font-size: 12px; padding: 0 8px; }
 /* Badge LIVE + léger halo rouge sur la ligne du match en cours */
 .scene-live-pill {
   background: var(--live-red);
