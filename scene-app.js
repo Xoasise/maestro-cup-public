@@ -142,7 +142,7 @@ function renderRightPanel() {
     const upcoming = MATCHES
       .filter((m) => m.status === "live" || m.status === "upcoming")
       .sort((a, b) => (a.journee + a.order).localeCompare(b.journee + b.order))
-      .slice(0, 7);
+      .slice(0, 8); // 8 poules -> jusqu'à 8 matchs simultanés à afficher (avant : limité à 7)
 
     content.innerHTML = upcoming.length
       ? upcoming.map((m) => {
@@ -171,7 +171,7 @@ function renderRightPanel() {
   const relevant = order
     .map((k) => bracket[k])
     .filter((m) => m.status !== "finished")
-    .slice(0, 6);
+    .slice(0, 8); // jusqu'à 8 huitièmes en même temps (avant : limité à 6, ce qui en cachait 2)
 
   content.innerHTML = relevant.length
     ? relevant.map((m) => {
