@@ -124,6 +124,19 @@ body.clean .cam-placeholder { display: none; }
 .scene-standings { font-size: 15px; }
 .scene-standings th, .scene-standings td { padding: 10px 10px; }
 
+/* ---------- Animation de rotation des panneaux ----------
+   Appliquée (via JS, en retirant/ré-ajoutant la classe) à chaque fois qu'un
+   panneau qui tourne toutes les 10s change de contenu : poules, prochains
+   matchs / phase finale, résultats. Léger fondu + glissement pour que le
+   changement soit lisible plutôt qu'un "saut" brutal. */
+@keyframes scene-panel-rotate-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.panel-rotate-anim {
+  animation: scene-panel-rotate-in 0.5s ease;
+}
+
 /* ---------- Liste des prochains matchs ---------- */
 .scene-match-row {
   display: flex; align-items: center; justify-content: space-between;

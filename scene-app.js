@@ -10,7 +10,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const POLL_INTERVAL_MS = 60_000;      // même cadence que le site public
-const POULE_ROTATE_MS = 10_000;       // vitesse de rotation du panneau "Poule"
+const ROTATE_MS = 10_000;             // vitesse de rotation de TOUS les panneaux qui tournent
+const PANEL_PAGE_SIZE = 4;            // nb de lignes affichées à la fois dans les panneaux qui tournent
 
 // Ajoute ?clean=1 à l'URL de la Browser Source dans OBS une fois la caméra
 // bien calée, pour masquer le repère en pointillés.
@@ -34,9 +35,14 @@ for (let i = 0; i < POULES.length; i += 2) {
 }
 let pairIndex = 0;
 
+// Compteur global incrémenté à chaque rotation (toutes les ROTATE_MS).
+// Sert à paginer les listes trop longues (prochains matchs, phase finale,
+// résultats) exactement comme pairIndex le fait déjà pour les poules.
+let rotateTick = 0;
+
 checkAndLoad();
 setInterval(checkAndLoad, POLL_INTERVAL_MS);
-setInterval(rotatePoulePanel, POULE_ROTATE_MS);
+setInterval(rotatePanels, ROTATE_MS);
 
 async function checkAndLoad() {
   try {
@@ -81,6 +87,28 @@ function getTeamSafe(teamId, teamsById, matchId) {
   return { id: teamId, name: `Équipe inconnue (${teamId})`, flag: "❓" };
 }
 
+/* ---------------- Helper : pagination des panneaux qui tournent ----------------
+   Découpe un tableau en pages de PANEL_PAGE_SIZE éléments et renvoie la page
+   courante selon rotateTick. S'il y a moins d'éléments qu'une page, on
+   renvoie simplement tout (pas besoin de faire tourner). */
+function paginate(list, pageSize = PANEL_PAGE_SIZE) {
+  if (list.length <= pageSize) return list;
+  const pageCount = Math.ceil(list.length / pageSize);
+  const idx = rotateTick % pageCount;
+  return list.slice(idx * pageSize, idx * pageSize + pageSize);
+}
+
+/* ---------------- Helper : animation de rotation ----------------
+   On retire puis ré-ajoute la classe pour forcer le navigateur à rejouer
+   l'animation CSS à chaque changement de contenu (sinon, ré-ajouter une
+   classe déjà présente ne relance pas l'animation). */
+function playRotateAnim(el) {
+  if (!el) return;
+  el.classList.remove("panel-rotate-anim");
+  void el.offsetWidth; // force le reflow
+  el.classList.add("panel-rotate-anim");
+}
+
 function renderAll() {
   if (!TEAMS.length) return;
   renderTicker();
@@ -111,10 +139,15 @@ function renderTicker() {
   }).join("");
 }
 
-/* ---------------- Panneau gauche : poules en rotation, 2 par 2 ---------------- */
-function rotatePoulePanel() {
+/* ---------------- Rotation globale : poules + panneau droit ----------------
+   Un seul intervalle de 10s fait tourner à la fois la paire de poules
+   affichées à gauche et les pages des listes à droite (prochains matchs /
+   phase finale, résultats), pour rester synchronisé. */
+function rotatePanels() {
   pairIndex = (pairIndex + 1) % POULE_PAIRS.length;
+  rotateTick += 1;
   renderPoulePanel();
+  if (TEAMS.length) renderRightPanel();
 }
 
 function renderPoulePanel() {
@@ -140,6 +173,8 @@ function renderOnePoule(p, slot) {
       <td class="pts">${s.pts}</td>
       <td>${s.diff > 0 ? "+" : ""}${s.diff}</td>
     </tr>`).join("");
+
+  playRotateAnim(document.getElementById(`poule-panel-${slot}`));
 }
 
 /* ---------------- Panneau droit : prochains matchs / phase finale + résultats ---------------- */
@@ -151,10 +186,12 @@ function renderRightPanel() {
 
   if (!poulesTerminees(MATCHES)) {
     title.textContent = "Prochains matchs";
-    const upcoming = MATCHES
+    const upcomingAll = MATCHES
       .filter((m) => m.status === "live" || m.status === "upcoming")
-      .sort((a, b) => (a.journee + a.order).localeCompare(b.journee + b.order))
-      .slice(0, 8); // 8 poules -> jusqu'à 8 matchs simultanés à afficher (avant : limité à 7)
+      .sort((a, b) => (a.journee + a.order).localeCompare(b.journee + b.order));
+    // Avec 8 poules il peut y avoir jusqu'à 8 matchs simultanés : on n'en
+    // montre que PANEL_PAGE_SIZE à la fois et on fait tourner le reste.
+    const upcoming = paginate(upcomingAll);
 
     content.innerHTML = upcoming.length
       ? upcoming.map((m) => {
@@ -173,6 +210,7 @@ function renderRightPanel() {
             </div>`;
         }).join("")
       : `<div class="scene-empty">Aucun match à venir pour le moment.</div>`;
+    playRotateAnim(content);
 
     renderPouleResults(resultsContent, teamsById);
     return;
@@ -182,10 +220,12 @@ function renderRightPanel() {
   title.textContent = "Phase finale";
   const { bracket } = buildBracketView(TEAMS, MATCHES, BRACKET);
   const order = ["hf1","hf2","hf3","hf4","hf5","hf6","hf7","hf8","qf1","qf2","qf3","qf4","sf1","sf2","final"];
-  const relevant = order
+  const relevantAll = order
     .map((k) => bracket[k])
-    .filter((m) => m.status !== "finished")
-    .slice(0, 8); // jusqu'à 8 huitièmes en même temps (avant : limité à 6, ce qui en cachait 2)
+    .filter((m) => m.status !== "finished");
+  // Jusqu'à 8 huitièmes en même temps : on en montre PANEL_PAGE_SIZE à la
+  // fois et on fait tourner les pages au lieu de tronquer la liste.
+  const relevant = paginate(relevantAll);
 
   content.innerHTML = relevant.length
     ? relevant.map((m) => {
@@ -207,6 +247,7 @@ function renderRightPanel() {
           </div>`;
       }).join("")
     : `<div class="scene-empty">Tournoi terminé 🏆</div>`;
+  playRotateAnim(content);
 
   renderBracketResults(resultsContent, bracket, order);
 }
@@ -218,12 +259,13 @@ function matchSortKey(m) {
 }
 
 /* Résultats des matchs de poule déjà marqués "terminé" par l'admin,
-   les plus récents (journée/ordre le plus élevé) en premier. */
+   les plus récents (journée/ordre le plus élevé) en premier. La liste
+   tourne par pages de PANEL_PAGE_SIZE si elle est plus longue. */
 function renderPouleResults(el, teamsById) {
-  const finished = MATCHES
+  const finishedAll = MATCHES
     .filter((m) => m.status === "finished")
-    .sort((a, b) => matchSortKey(b).localeCompare(matchSortKey(a)))
-    .slice(0, 8);
+    .sort((a, b) => matchSortKey(b).localeCompare(matchSortKey(a)));
+  const finished = paginate(finishedAll);
 
   el.innerHTML = finished.length
     ? finished.map((m) => {
@@ -239,16 +281,17 @@ function renderPouleResults(el, teamsById) {
           </div>`;
       }).join("")
     : `<div class="scene-empty">Aucun résultat pour le moment.</div>`;
+  playRotateAnim(el);
 }
 
 /* Idem, mais pour les matchs de phase finale (huitièmes, quarts, etc.)
-   une fois que la phase de poules est terminée. */
+   une fois que la phase de poules est terminée. Pagine également. */
 function renderBracketResults(el, bracket, order) {
-  const finished = order
+  const finishedAll = order
     .map((k) => bracket[k])
     .filter((m) => m.status === "finished")
-    .reverse()
-    .slice(0, 8);
+    .reverse();
+  const finished = paginate(finishedAll);
 
   el.innerHTML = finished.length
     ? finished.map((m) => {
@@ -264,4 +307,5 @@ function renderBracketResults(el, bracket, order) {
           </div>`;
       }).join("")
     : `<div class="scene-empty">Aucun résultat pour le moment.</div>`;
+  playRotateAnim(el);
 }
