@@ -31,27 +31,47 @@
     </div>
   </div>
 
-  <!-- Panneau gauche : classement d'une poule (défile automatiquement) -->
+  <!-- Panneau gauche : classement de 2 poules (défilent par paire automatiquement) -->
   <div class="scene-area scene-left">
-    <div class="scene-panel" id="poule-panel">
-      <div class="scene-panel-head">
-        <span class="badge" id="poule-badge">A</span>
-        <h3 id="poule-title">Poule A</h3>
+    <div class="scene-stack">
+      <div class="scene-panel" id="poule-panel-1">
+        <div class="scene-panel-head">
+          <span class="badge" id="poule-badge-1">A</span>
+          <h3 id="poule-title-1">Poule A</h3>
+        </div>
+        <table class="standings scene-standings">
+          <thead><tr><th>#</th><th style="text-align:left">Équipe</th><th>Pts</th><th>Diff</th></tr></thead>
+          <tbody id="poule-rows-1"></tbody>
+        </table>
       </div>
-      <table class="standings scene-standings">
-        <thead><tr><th>#</th><th style="text-align:left">Équipe</th><th>Pts</th><th>Diff</th></tr></thead>
-        <tbody id="poule-rows"></tbody>
-      </table>
+      <div class="scene-panel" id="poule-panel-2">
+        <div class="scene-panel-head">
+          <span class="badge" id="poule-badge-2">B</span>
+          <h3 id="poule-title-2">Poule B</h3>
+        </div>
+        <table class="standings scene-standings">
+          <thead><tr><th>#</th><th style="text-align:left">Équipe</th><th>Pts</th><th>Diff</th></tr></thead>
+          <tbody id="poule-rows-2"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <!-- Panneau droit : prochains matchs ou phase finale -->
+  <!-- Panneau droit : prochains matchs / phase finale, puis résultats en dessous -->
   <div class="scene-area scene-right">
-    <div class="scene-panel">
-      <div class="scene-panel-head">
-        <h3 id="right-panel-title">Prochains matchs</h3>
+    <div class="scene-stack">
+      <div class="scene-panel">
+        <div class="scene-panel-head">
+          <h3 id="right-panel-title">Prochains matchs</h3>
+        </div>
+        <div id="right-panel-content"></div>
       </div>
-      <div id="right-panel-content"></div>
+      <div class="scene-panel">
+        <div class="scene-panel-head">
+          <h3>Résultats</h3>
+        </div>
+        <div id="results-panel-content"></div>
+      </div>
     </div>
   </div>
 

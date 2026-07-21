@@ -82,6 +82,16 @@ body.clean .cam-placeholder { display: none; }
 .scene-left { grid-area: left; }
 .scene-right { grid-area: right; }
 
+/* Empile 2 panneaux (poules en haut/bas à gauche, prochains matchs +
+   résultats en haut/bas à droite), avec le même style de défilement. */
+.scene-stack {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.scene-stack .scene-panel { flex: 1 1 0; min-height: 0; }
+
 .scene-panel {
   height: 100%;
   background: rgba(17,26,46,0.92);
@@ -129,6 +139,11 @@ body.clean .cam-placeholder { display: none; }
 .scene-live-score {
   font-family: var(--font-mono); font-weight: 700; font-size: 14px;
   color: var(--gold); padding: 0 4px;
+}
+/* Score final affiché dans le panneau "Résultats" */
+.scene-final-score {
+  font-family: var(--font-mono); font-weight: 700; font-size: 14px;
+  color: var(--poule-b); padding: 0 4px;
 }
 
 /* ---------- Bracket compact (phase finale) ---------- */

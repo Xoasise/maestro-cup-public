@@ -26,7 +26,13 @@ const POULE_COLOR = {
 let TEAMS = [];
 let MATCHES = [];
 let BRACKET = {};
-let pouleIndex = 0;
+
+// Les poules défilent par paire (une en haut, une en bas). 8 poules -> 4 paires.
+const POULE_PAIRS = [];
+for (let i = 0; i < POULES.length; i += 2) {
+  POULE_PAIRS.push([POULES[i], POULES[i + 1]]);
+}
+let pairIndex = 0;
 
 checkAndLoad();
 setInterval(checkAndLoad, POLL_INTERVAL_MS);
@@ -105,24 +111,29 @@ function renderTicker() {
   }).join("");
 }
 
-/* ---------------- Panneau gauche : poule en rotation ---------------- */
+/* ---------------- Panneau gauche : poules en rotation, 2 par 2 ---------------- */
 function rotatePoulePanel() {
-  pouleIndex = (pouleIndex + 1) % POULES.length;
+  pairIndex = (pairIndex + 1) % POULE_PAIRS.length;
   renderPoulePanel();
 }
 
 function renderPoulePanel() {
   if (!TEAMS.length) return;
-  const p = POULES[pouleIndex];
+  const [pTop, pBottom] = POULE_PAIRS[pairIndex];
+  renderOnePoule(pTop, 1);
+  renderOnePoule(pBottom, 2);
+}
+
+function renderOnePoule(p, slot) {
   const teams = TEAMS.filter((t) => t.poule === p);
   const standings = computeStandings(teams, MATCHES);
 
-  document.getElementById("poule-badge").textContent = p;
-  document.getElementById("poule-badge").style.background = POULE_COLOR[p];
-  document.getElementById("poule-title").textContent = `Poule ${p}`;
-  document.getElementById("poule-panel").style.setProperty("--poule-color", POULE_COLOR[p]);
+  document.getElementById(`poule-badge-${slot}`).textContent = p;
+  document.getElementById(`poule-badge-${slot}`).style.background = POULE_COLOR[p];
+  document.getElementById(`poule-title-${slot}`).textContent = `Poule ${p}`;
+  document.getElementById(`poule-panel-${slot}`).style.setProperty("--poule-color", POULE_COLOR[p]);
 
-  document.getElementById("poule-rows").innerHTML = standings.map((s, i) => `
+  document.getElementById(`poule-rows-${slot}`).innerHTML = standings.map((s, i) => `
     <tr class="${i < 2 ? "qualified" : ""}">
       <td>${i + 1}</td>
       <td class="team-name">${s.flag} ${s.name}</td>
@@ -131,10 +142,11 @@ function renderPoulePanel() {
     </tr>`).join("");
 }
 
-/* ---------------- Panneau droit : prochains matchs / phase finale ---------------- */
+/* ---------------- Panneau droit : prochains matchs / phase finale + résultats ---------------- */
 function renderRightPanel() {
   const title = document.getElementById("right-panel-title");
   const content = document.getElementById("right-panel-content");
+  const resultsContent = document.getElementById("results-panel-content");
   const teamsById = Object.fromEntries(TEAMS.map((t) => [t.id, t]));
 
   if (!poulesTerminees(MATCHES)) {
@@ -161,6 +173,8 @@ function renderRightPanel() {
             </div>`;
         }).join("")
       : `<div class="scene-empty">Aucun match à venir pour le moment.</div>`;
+
+    renderPouleResults(resultsContent, teamsById);
     return;
   }
 
@@ -179,8 +193,6 @@ function renderRightPanel() {
           ? (m.scoreA > m.scoreB ? m.teamA.id : m.teamB.id) : null;
         const cls = (t) => (winnerId && t.id === winnerId ? "winner" : "");
         const isLive = m.status === "live";
-        // BUG CORRIGÉ : les scores et le statut "live" n'étaient jamais
-        // affichés ici, même quand ils étaient bien reçus depuis Firestore.
         const scoreTxt = (val) => (val === null || val === undefined) ? "" : `<span class="scene-bracket-score">${val}</span>`;
         return `
           <div class="scene-bracket-row ${isLive ? "is-live" : ""}">
@@ -195,4 +207,61 @@ function renderRightPanel() {
           </div>`;
       }).join("")
     : `<div class="scene-empty">Tournoi terminé 🏆</div>`;
+
+  renderBracketResults(resultsContent, bracket, order);
+}
+
+/* Clé de tri "journée + ordre" en forçant l'ordre à 3 chiffres pour éviter
+   un tri alphabétique fautif (ex: "10" avant "2"). */
+function matchSortKey(m) {
+  return `${m.journee}-${String(m.order).padStart(3, "0")}`;
+}
+
+/* Résultats des matchs de poule déjà marqués "terminé" par l'admin,
+   les plus récents (journée/ordre le plus élevé) en premier. */
+function renderPouleResults(el, teamsById) {
+  const finished = MATCHES
+    .filter((m) => m.status === "finished")
+    .sort((a, b) => matchSortKey(b).localeCompare(matchSortKey(a)))
+    .slice(0, 8);
+
+  el.innerHTML = finished.length
+    ? finished.map((m) => {
+        const a = getTeamSafe(m.teamA, teamsById, m.id);
+        const b = getTeamSafe(m.teamB, teamsById, m.id);
+        return `
+          <div class="scene-match-row">
+            <div class="scene-match-teams">
+              <span>${a.flag} ${a.name}</span>
+              <span class="scene-final-score">${m.scoreA ?? 0} - ${m.scoreB ?? 0}</span>
+              <span>${b.name} ${b.flag}</span>
+            </div>
+          </div>`;
+      }).join("")
+    : `<div class="scene-empty">Aucun résultat pour le moment.</div>`;
+}
+
+/* Idem, mais pour les matchs de phase finale (huitièmes, quarts, etc.)
+   une fois que la phase de poules est terminée. */
+function renderBracketResults(el, bracket, order) {
+  const finished = order
+    .map((k) => bracket[k])
+    .filter((m) => m.status === "finished")
+    .reverse()
+    .slice(0, 8);
+
+  el.innerHTML = finished.length
+    ? finished.map((m) => {
+        const aWins = m.scoreA !== null && m.scoreA > m.scoreB;
+        const bWins = m.scoreA !== null && m.scoreB > m.scoreA;
+        return `
+          <div class="scene-bracket-row">
+            <div class="scene-bracket-label">${m.label}</div>
+            <div class="scene-bracket-teams">
+              <span class="${aWins ? "winner" : ""}">${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name} <span class="scene-bracket-score">${m.scoreA}</span></span>
+              <span class="${bWins ? "winner" : ""}"><span class="scene-bracket-score">${m.scoreB}</span> ${m.teamB.flag ? m.teamB.flag + " " : ""}${m.teamB.name}</span>
+            </div>
+          </div>`;
+      }).join("")
+    : `<div class="scene-empty">Aucun résultat pour le moment.</div>`;
 }
