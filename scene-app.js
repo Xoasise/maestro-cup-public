@@ -60,6 +60,21 @@ function setLastSync() {
   el.textContent = new Date().toLocaleTimeString("fr-FR");
 }
 
+/* ---------------- Helper : résolution d'équipe défensive ----------------
+   Voir app.js pour l'explication : au lieu de faire disparaître un match
+   quand une équipe référencée est introuvable, on affiche un nom de
+   secours + un avertissement en console. */
+function getTeamSafe(teamId, teamsById, matchId) {
+  const team = teamsById[teamId];
+  if (team) return team;
+  console.warn(
+    `[Maestro Cup - Scène] Équipe introuvable pour l'ID "${teamId}" ` +
+    (matchId ? `(match ${matchId})` : "") +
+    " — vérifie la collection 'teams' et les références du match."
+  );
+  return { id: teamId, name: `Équipe inconnue (${teamId})`, flag: "❓" };
+}
+
 function renderAll() {
   if (!TEAMS.length) return;
   renderTicker();
@@ -81,8 +96,8 @@ function renderTicker() {
   }
 
   el.innerHTML = relevant.slice(0, 12).map((m) => {
-    const a = teamsById[m.teamA], b = teamsById[m.teamB];
-    if (!a || !b) return "";
+    const a = getTeamSafe(m.teamA, teamsById, m.id);
+    const b = getTeamSafe(m.teamB, teamsById, m.id);
     const pill = m.status === "live"
       ? `<span class="live-pill">LIVE</span>`
       : `<span style="color:var(--text-muted)">${m.time}</span>`;
@@ -131,14 +146,15 @@ function renderRightPanel() {
 
     content.innerHTML = upcoming.length
       ? upcoming.map((m) => {
-          const a = teamsById[m.teamA], b = teamsById[m.teamB];
-          if (!a || !b) return "";
+          const a = getTeamSafe(m.teamA, teamsById, m.id);
+          const b = getTeamSafe(m.teamB, teamsById, m.id);
           const live = m.status === "live";
+          const score = live ? `${m.scoreA ?? 0} - ${m.scoreB ?? 0}` : null;
           return `
             <div class="scene-match-row ${live ? "is-live" : ""}">
               <div class="scene-match-teams">
                 <span>${a.flag} ${a.name}</span>
-                <span class="vs">vs</span>
+                ${score ? `<span class="scene-live-score">${score}</span>` : `<span class="vs">vs</span>`}
                 <span>${b.name} ${b.flag}</span>
               </div>
               <div class="scene-match-meta">${live ? "LIVE" : m.time}</div>
@@ -159,15 +175,22 @@ function renderRightPanel() {
 
   content.innerHTML = relevant.length
     ? relevant.map((m) => {
-        const winnerId = (m.status === "finished" && m.scoreA !== m.scoreB)
+        const winnerId = (m.status === "finished" && m.scoreA !== null && m.scoreA !== m.scoreB)
           ? (m.scoreA > m.scoreB ? m.teamA.id : m.teamB.id) : null;
         const cls = (t) => (winnerId && t.id === winnerId ? "winner" : "");
+        const isLive = m.status === "live";
+        // BUG CORRIGÉ : les scores et le statut "live" n'étaient jamais
+        // affichés ici, même quand ils étaient bien reçus depuis Firestore.
+        const scoreTxt = (val) => (val === null || val === undefined) ? "" : `<span class="scene-bracket-score">${val}</span>`;
         return `
-          <div class="scene-bracket-row">
-            <div class="scene-bracket-label">${m.label}</div>
+          <div class="scene-bracket-row ${isLive ? "is-live" : ""}">
+            <div class="scene-bracket-label">
+              ${m.label}
+              ${isLive ? `<span class="scene-live-pill">LIVE</span>` : ""}
+            </div>
             <div class="scene-bracket-teams">
-              <span class="${cls(m.teamA)}">${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name}</span>
-              <span class="${cls(m.teamB)}">${m.teamB.flag ? m.teamB.flag + " " : ""}${m.teamB.name}</span>
+              <span class="${cls(m.teamA)}">${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name} ${scoreTxt(m.scoreA)}</span>
+              <span class="${cls(m.teamB)}">${scoreTxt(m.scoreB)} ${m.teamB.flag ? m.teamB.flag + " " : ""}${m.teamB.name}</span>
             </div>
           </div>`;
       }).join("")

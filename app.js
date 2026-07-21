@@ -74,6 +74,25 @@ function setLastSync() {
   el.textContent = `Dernière mise à jour : ${now.toLocaleTimeString("fr-FR")}`;
 }
 
+/* ---------------- Helper : résolution d'équipe défensive ----------------
+   Avant, un match dont teamA/teamB ne correspondait à aucune équipe connue
+   était simplement effacé de l'affichage (return ""), sans aucune trace :
+   ça donnait l'impression qu'un match "disparaissait" au hasard. Ici on
+   affiche un nom de secours + un avertissement en console pour repérer
+   tout de suite un ID d'équipe orphelin (équipe supprimée/recréée côté
+   admin, faute de frappe dans le doc du match, etc.). */
+function getTeamSafe(teamId, teamsById, matchId) {
+  const team = teamsById[teamId];
+  if (team) return team;
+  console.warn(
+    `[Maestro Cup] Équipe introuvable pour l'ID "${teamId}" ` +
+    (matchId ? `(match ${matchId})` : "") +
+    " — vérifie que l'équipe existe toujours dans la collection 'teams' " +
+    "et que le match référence bien le bon ID."
+  );
+  return { id: teamId, name: `Équipe inconnue (${teamId})`, flag: "❓" };
+}
+
 /* ---------------- Tabs ---------------- */
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -108,8 +127,8 @@ function renderTicker() {
   }
 
   el.innerHTML = relevant.slice(0, 12).map((m) => {
-    const a = teamsById[m.teamA], b = teamsById[m.teamB];
-    if (!a || !b) return "";
+    const a = getTeamSafe(m.teamA, teamsById, m.id);
+    const b = getTeamSafe(m.teamB, teamsById, m.id);
     const pill = m.status === "live"
       ? `<span class="live-pill">LIVE</span>`
       : `<span style="color:var(--text-muted)">${m.time}</span>`;
@@ -140,8 +159,8 @@ function renderCalendrier() {
   const el = document.getElementById("calendrier-content");
 
   el.innerHTML = list.map((m) => {
-    const a = teamsById[m.teamA], b = teamsById[m.teamB];
-    if (!a || !b) return "";
+    const a = getTeamSafe(m.teamA, teamsById, m.id);
+    const b = getTeamSafe(m.teamB, teamsById, m.id);
     const statusLabel = { upcoming: "À venir", live: "En direct", finished: "Terminé" }[m.status];
     const score = m.status === "finished" || m.status === "live"
       ? `${m.scoreA ?? 0} <span class="vs">-</span> ${m.scoreB ?? 0}`
@@ -224,9 +243,10 @@ function renderBracketMatch(m) {
     ? (winnerId && team.id === winnerId ? "winner" : "")
     : "unresolved";
   const scoreTxt = (val) => (val === null || val === undefined) ? "" : `<span class="score">${val}</span>`;
+  const livePill = m.status === "live" ? `<span class="live-pill">LIVE</span>` : "";
   return `
     <div class="bracket-match">
-      <div class="b-label">${m.label}</div>
+      <div class="b-label">${m.label} ${livePill}</div>
       <div class="bracket-row ${rowClass(m.teamA)}"><span>${m.teamA.flag ? m.teamA.flag + " " : ""}${m.teamA.name}</span>${scoreTxt(m.scoreA)}</div>
       <div class="bracket-row ${rowClass(m.teamB)}"><span>${m.teamB.flag ? m.teamB.flag + " " : ""}${m.teamB.name}</span>${scoreTxt(m.scoreB)}</div>
     </div>`;
