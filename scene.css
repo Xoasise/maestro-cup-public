@@ -45,6 +45,32 @@ html, body {
   align-items: center;
 }
 
+/* ---------- Écran vainqueur ---------- */
+.scene-winner-announce {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 30px 18px;
+  text-align: center;
+  gap: 10px;
+}
+.scene-winner-flag { font-size: 54px; }
+.scene-winner-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+.scene-winner-name {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(232,184,75,0.5);
+}
+
 /* ---------- Panneaux gauche / droite ---------- */
 .scene-left { grid-area: left; }
 .scene-right { grid-area: right; }
