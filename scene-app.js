@@ -150,6 +150,46 @@ function getCurrentRoundMatches(bracket) {
   return []; // tournoi terminé
 }
 
+/* Renvoie les matchs du dernier tour ENTIÈREMENT terminé (et lui seul) —
+   ex: pendant les demies, ça renvoie les quarts ; pendant la finale, les
+   demies. Dès qu'un tour n'est pas complet, on s'arrête avant. */
+function getLastCompletedRoundMatches(bracket) {
+  let lastCompleted = [];
+  for (const keys of ROUND_GROUPS) {
+    const matches = keys.map((k) => bracket[k]);
+    if (matches.every((m) => m.status === "finished")) {
+      lastCompleted = matches;
+    } else {
+      break;
+    }
+  }
+  return lastCompleted;
+}
+
+function getFinalWinner(bracket) {
+  const m = bracket.final;
+  if (!m || m.status !== "finished" || m.scoreA === null || m.scoreB === null || m.scoreA === m.scoreB) return null;
+  return m.scoreA > m.scoreB ? m.teamA : m.teamB;
+}
+
+function renderChampionScreen(title, content, resultsContent, winner, finalMatch) {
+  title.textContent = "🏆 Champion";
+  content.innerHTML = `
+    <div class="scene-winner-announce">
+      <div class="scene-winner-flag">${winner.flag || ""}</div>
+      <div class="scene-winner-label">Vainqueur du tournoi</div>
+      <div class="scene-winner-name">${winner.name}</div>
+    </div>`;
+  playRotateAnim(content);
+
+  resultsContent.innerHTML = `
+    <div class="scene-bracket-row">
+      <div class="scene-bracket-label">Finale</div>
+      <div class="scene-bracket-teams">${bracketTeamsHtml(finalMatch)}</div>
+    </div>`;
+  playRotateAnim(resultsContent);
+}
+
 function renderAll() {
   if (!TEAMS.length) return;
   renderTicker();
@@ -258,9 +298,14 @@ function renderRightPanel() {
   }
 
   // Phase de poules terminée -> on montre la phase finale
-  title.textContent = "Phase finale";
   const { bracket } = buildBracketView(TEAMS, MATCHES, BRACKET);
-  const order = ["hf1","hf2","hf3","hf4","hf5","hf6","hf7","hf8","qf1","qf2","qf3","qf4","sf1","sf2","final"];
+  const winner = getFinalWinner(bracket);
+  if (winner) {
+    renderChampionScreen(title, content, resultsContent, winner, bracket.final);
+    return;
+  }
+
+  title.textContent = "Phase finale";
   const relevantAll = getCurrentRoundMatches(bracket);
   const relevant = paginate(relevantAll, PANEL_PAGE_SIZE);
 
@@ -279,7 +324,7 @@ function renderRightPanel() {
     : `<div class="scene-empty">Tournoi terminé 🏆</div>`;
   playRotateAnim(content);
 
-  renderBracketResults(resultsContent, bracket, order);
+  renderBracketResults(resultsContent, bracket);
 }
 
 /* Clé de tri "journée + ordre" en forçant l'ordre à 3 chiffres pour éviter
@@ -316,12 +361,9 @@ function renderPouleResults(el, teamsById) {
 
 /* Idem, mais pour les matchs de phase finale (huitièmes, quarts, etc.)
    une fois que la phase de poules est terminée. Pagine également. */
-function renderBracketResults(el, bracket, order) {
-  const finishedAll = order
-    .map((k) => bracket[k])
-    .filter((m) => m.status === "finished")
-    .reverse();
-  const finished = paginate(finishedAll);
+function renderBracketResults(el, bracket) {
+  const finishedAll = getLastCompletedRoundMatches(bracket);
+  const finished = paginate(finishedAll, PANEL_PAGE_SIZE);
 
   el.innerHTML = finished.length
     ? finished.map((m) => `
