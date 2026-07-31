@@ -12,6 +12,7 @@ const db = getFirestore(app);
 const POLL_INTERVAL_MS = 60_000;      // même cadence que le site public
 const ROTATE_MS = 10_000;             // vitesse de rotation de TOUS les panneaux qui tournent
 const PANEL_PAGE_SIZE = 4;            // nb de lignes affichées à la fois dans les panneaux qui tournent
+const POULE_PANEL_PAGE_SIZE = 8;      // "prochains matchs" et "résultats" (phase de poules) : 8 matchs par rotation
 
 // Ajoute ?clean=1 à l'URL de la Browser Source dans OBS une fois la caméra
 // bien calée, pour masquer le repère en pointillés.
@@ -130,6 +131,25 @@ function bracketTeamsHtml(m) {
     <span class="scene-bracket-name right ${winCls(m.teamB)}">${m.teamB.name}${m.teamB.flag ? " " + m.teamB.flag : ""}</span>`;
 }
 
+/* Ne renvoie que les matchs du premier tour pas encore entièrement
+   terminé (huitièmes, puis quarts, puis demies, puis finale) — les
+   tours suivants ne sont pas encore établis, donc inutile de les montrer. */
+const ROUND_GROUPS = [
+  ["hf1", "hf2", "hf3", "hf4", "hf5", "hf6", "hf7", "hf8"],
+  ["qf1", "qf2", "qf3", "qf4"],
+  ["sf1", "sf2"],
+  ["final"],
+];
+
+function getCurrentRoundMatches(bracket) {
+  for (const keys of ROUND_GROUPS) {
+    const matches = keys.map((k) => bracket[k]);
+    const allFinished = matches.every((m) => m.status === "finished");
+    if (!allFinished) return matches.filter((m) => m.status !== "finished");
+  }
+  return []; // tournoi terminé
+}
+
 function renderAll() {
   if (!TEAMS.length) return;
   renderTicker();
@@ -212,7 +232,7 @@ function renderRightPanel() {
       .sort((a, b) => (a.journee + a.order).localeCompare(b.journee + b.order));
     // Avec 8 poules il peut y avoir jusqu'à 8 matchs simultanés : on n'en
     // montre que PANEL_PAGE_SIZE à la fois et on fait tourner le reste.
-    const upcoming = paginate(upcomingAll);
+    const upcoming = paginate(upcomingAll, POULE_PANEL_PAGE_SIZE);
 
     content.innerHTML = upcoming.length
       ? upcoming.map((m) => {
@@ -241,12 +261,8 @@ function renderRightPanel() {
   title.textContent = "Phase finale";
   const { bracket } = buildBracketView(TEAMS, MATCHES, BRACKET);
   const order = ["hf1","hf2","hf3","hf4","hf5","hf6","hf7","hf8","qf1","qf2","qf3","qf4","sf1","sf2","final"];
-  const relevantAll = order
-    .map((k) => bracket[k])
-    .filter((m) => m.status !== "finished");
-  // Jusqu'à 8 huitièmes en même temps : on en montre PANEL_PAGE_SIZE à la
-  // fois et on fait tourner les pages au lieu de tronquer la liste.
-  const relevant = paginate(relevantAll);
+  const relevantAll = getCurrentRoundMatches(bracket);
+  const relevant = paginate(relevantAll, PANEL_PAGE_SIZE);
 
   content.innerHTML = relevant.length
     ? relevant.map((m) => {
@@ -279,7 +295,7 @@ function renderPouleResults(el, teamsById) {
   const finishedAll = MATCHES
     .filter((m) => m.status === "finished")
     .sort((a, b) => matchSortKey(b).localeCompare(matchSortKey(a)));
-  const finished = paginate(finishedAll);
+  const finished = paginate(finishedAll, POULE_PANEL_PAGE_SIZE);
 
   el.innerHTML = finished.length
     ? finished.map((m) => {
