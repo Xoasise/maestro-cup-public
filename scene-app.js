@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { computeStandings, buildBracketView, poulesTerminees, POULES } from "./logic.js";
+import { computeStandings, buildBracketView, poulesTerminees, POULES, BRACKET_DEF, getRoundGroups } from "./logic.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -134,12 +134,7 @@ function bracketTeamsHtml(m) {
 /* Ne renvoie que les matchs du premier tour pas encore entièrement
    terminé (huitièmes, puis quarts, puis demies, puis finale) — les
    tours suivants ne sont pas encore établis, donc inutile de les montrer. */
-const ROUND_GROUPS = [
-  ["hf1", "hf2", "hf3", "hf4", "hf5", "hf6", "hf7", "hf8"],
-  ["qf1", "qf2", "qf3", "qf4"],
-  ["sf1", "sf2"],
-  ["final"],
-];
+const ROUND_GROUPS = getRoundGroups(BRACKET_DEF);
 
 function getCurrentRoundMatches(bracket) {
   for (const keys of ROUND_GROUPS) {
