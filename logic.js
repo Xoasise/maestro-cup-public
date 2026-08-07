@@ -79,6 +79,14 @@ export function getBracketRounds(bracketDef) {
     .filter((r) => r.keys.length > 0);
 }
 
+export function getRoundGroups(bracketDef) {
+  const keys = Object.keys(bracketDef);
+  const prefixes = ["hf", "qf", "sf", "final"];
+  return prefixes
+    .map((prefix) => keys.filter((k) => k.startsWith(prefix)).sort())
+    .filter((group) => group.length > 0);
+}
+
 /**
  * Calcule le classement d'une poule à partir des matchs terminés.
  * teams: liste des équipes (objets Firestore) de la poule
