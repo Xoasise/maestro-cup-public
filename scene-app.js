@@ -132,8 +132,10 @@ function bracketTeamsHtml(m) {
 }
 
 /* Ne renvoie que les matchs du premier tour pas encore entièrement
-   terminé (huitièmes, puis quarts, puis demies, puis finale) — les
-   tours suivants ne sont pas encore établis, donc inutile de les montrer. */
+   terminé (huitièmes ou quarts selon le mode, puis demies, puis finale) —
+   les tours suivants ne sont pas encore établis, donc inutile de les montrer.
+   ROUND_GROUPS est déduit dynamiquement de BRACKET_DEF (voir logic.js),
+   donc s'adapte automatiquement au nombre de tours (mode 16 ou 32). */
 const ROUND_GROUPS = getRoundGroups(BRACKET_DEF);
 
 function getCurrentRoundMatches(bracket) {
