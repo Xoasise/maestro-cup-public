@@ -135,6 +135,13 @@ function bracketTeamsHtml(m) {
    terminé (huitièmes, puis quarts, puis demies, puis finale) — les
    tours suivants ne sont pas encore établis, donc inutile de les montrer. */
 const ROUND_GROUPS = getRoundGroups(BRACKET_DEF);
+
+function getCurrentRoundMatches(bracket) {
+  for (const keys of ROUND_GROUPS) {
+    const matches = keys.map((k) => bracket[k]);
+    const allFinished = matches.every((m) => m.status === "finished");
+    if (!allFinished) return matches.filter((m) => m.status !== "finished");
+  }
   return []; // tournoi terminé
 }
 
