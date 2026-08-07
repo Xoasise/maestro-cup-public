@@ -1,34 +1,83 @@
 // Logique de classement et de phase finale — partagée par le site public et le panel admin.
 // (Ce fichier est volontairement dupliqué dans les deux dépôts pour rester deux sites indépendants.)
 
-// 32 équipes réparties en 8 poules de 4 (A à H).
-// Les 2 premiers de chaque poule (16 équipes) sont qualifiés pour la phase finale.
-// Un tour de huitièmes de finale a été ajouté avant les quarts pour absorber ces 16 qualifiés.
-export const BRACKET_DEF = {
-  // ---- Huitièmes de finale (8 matchs, 16 équipes) ----
-  hf1: { label: "Huitième de finale 1", from: [["A", 1], ["B", 2]] },
-  hf2: { label: "Huitième de finale 2", from: [["C", 1], ["D", 2]] },
-  hf3: { label: "Huitième de finale 3", from: [["E", 1], ["F", 2]] },
-  hf4: { label: "Huitième de finale 4", from: [["G", 1], ["H", 2]] },
-  hf5: { label: "Huitième de finale 5", from: [["B", 1], ["A", 2]] },
-  hf6: { label: "Huitième de finale 6", from: [["D", 1], ["C", 2]] },
-  hf7: { label: "Huitième de finale 7", from: [["F", 1], ["E", 2]] },
-  hf8: { label: "Huitième de finale 8", from: [["H", 1], ["G", 2]] },
+import { POULES } from "./tournament-config.js";
+export { POULES };
 
-  // ---- Quarts de finale (alimentés par les vainqueurs des huitièmes) ----
-  qf1: { label: "Quart de finale 1", from: [["hf1"], ["hf2"]] },
-  qf2: { label: "Quart de finale 2", from: [["hf3"], ["hf4"]] },
-  qf3: { label: "Quart de finale 3", from: [["hf5"], ["hf6"]] },
-  qf4: { label: "Quart de finale 4", from: [["hf7"], ["hf8"]] },
-
-  // ---- Demi-finales & finale (inchangées dans leur logique) ----
-  sf1: { label: "Demi-finale 1", from: [["qf1"], ["qf2"]] },
-  sf2: { label: "Demi-finale 2", from: [["qf3"], ["qf4"]] },
-  final: { label: "Finale", from: [["sf1"], ["sf2"]] },
+// Génère automatiquement le bracket (huitièmes/quarts/demies/finale) à partir
+// du nombre de poules en config (tournament-config.js).
+//   8 poules -> 16 qualifiés -> huitièmes + quarts + demies + finale
+//   4 poules -> 8 qualifiés  -> quarts + demies + finale (pas de huitièmes)
+const ROUND_NAMES = {
+  16: ["hf", "qf", "sf", "final"],
+  8:  ["qf", "sf", "final"],
 };
 
-// Liste des poules — modifiée pour passer de 4 à 8 poules.
-export const POULES = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const ROUND_LABELS = {
+  hf: "Huitième de finale", qf: "Quart de finale",
+  sf: "Demi-finale", final: "Finale",
+};
+
+export function generateBracketDef(poules) {
+  const nQualified = poules.length * 2;
+  const rounds = ROUND_NAMES[nQualified];
+  if (!rounds) throw new Error(`Nombre de poules non supporté: ${poules.length}`);
+
+  const def = {};
+
+  // ---- 1er tour : construit à partir des paires de poules ----
+  const firstRound = rounds[0];
+  let firstRoundKeys = [];
+  for (let i = 0; i < poules.length; i += 2) {
+    const [pA, pB] = [poules[i], poules[i + 1]];
+    const key1 = `${firstRound}${firstRoundKeys.length + 1}`;
+    def[key1] = { label: `${ROUND_LABELS[firstRound]} ${firstRoundKeys.length + 1}`, from: [[pA, 1], [pB, 2]] };
+    firstRoundKeys.push(key1);
+
+    const key2 = `${firstRound}${firstRoundKeys.length + 1}`;
+    def[key2] = { label: `${ROUND_LABELS[firstRound]} ${firstRoundKeys.length + 1}`, from: [[pB, 1], [pA, 2]] };
+    firstRoundKeys.push(key2);
+  }
+
+  // ---- Tours suivants : on regroupe les clés du tour précédent 2 par 2 ----
+  let prevKeys = firstRoundKeys;
+  for (let r = 1; r < rounds.length; r++) {
+    const roundName = rounds[r];
+    const newKeys = [];
+    for (let i = 0; i < prevKeys.length; i += 2) {
+      const key = roundName === "final" ? "final" : `${roundName}${newKeys.length + 1}`;
+      def[key] = {
+        label: roundName === "final" ? "Finale" : `${ROUND_LABELS[roundName]} ${newKeys.length + 1}`,
+        from: [[prevKeys[i]], [prevKeys[i + 1]]],
+      };
+      newKeys.push(key);
+    }
+    prevKeys = newKeys;
+  }
+
+  return def;
+}
+
+export const BRACKET_DEF = generateBracketDef(POULES);
+
+const ROUND_ORDER = [
+  { prefix: "hf", title: "Huitièmes de finale" },
+  { prefix: "qf", title: "Quarts de finale" },
+  { prefix: "sf", title: "Demi-finales" },
+  { prefix: "final", title: "Finale" },
+];
+
+// Déduit dynamiquement les tours réellement présents dans un BRACKET_DEF donné
+// (utile pour l'affichage admin, qui n'a pas à savoir combien de tours il y a).
+export function getBracketRounds(bracketDef) {
+  const keys = Object.keys(bracketDef);
+  return ROUND_ORDER
+    .map(({ prefix, title }) => ({
+      title,
+      keys: keys.filter((k) => k.startsWith(prefix)).sort(),
+    }))
+    .filter((r) => r.keys.length > 0);
+}
 
 /**
  * Calcule le classement d'une poule à partir des matchs terminés.
