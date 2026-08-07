@@ -1,4 +1,4 @@
-export const MODE = "32"; // "32" ou "16"
+export const MODE = "16"; // "32" ou "16"
 
 const POULES_32 = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const POULES_16 = ["A", "B", "C", "D"];
